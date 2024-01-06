@@ -11,8 +11,9 @@ fn main() -> miette::Result<()> {
     println!("cargo:rustc-link-search=native={}\\lib", dst.display());
     println!("cargo:rustc-link-lib=static=ZXing");
 
-    let path = std::path::PathBuf::from("zxing-cpp/core/src");
-    let mut b = autocxx_build::Builder::new("src/lib.rs", &[&path])
+    let src_path = std::path::PathBuf::from("zxing-cpp/core/src");
+    let ext_path = std::path::PathBuf::from("src/extensions");
+    let mut b = autocxx_build::Builder::new("src/lib.rs", &[&src_path, &ext_path])
         .extra_clang_args(&["-std=c++17", "-Wc++17-extensions"])
         .build()?;
 

@@ -1,4 +1,4 @@
-use zxing_cpp2rs::{ImageView, read_barcode};
+use zxing_cpp2rs::{read_barcode, ImageView};
 static IMG: &[u8] = include_bytes!("img.png");
 fn main() -> anyhow::Result<()> {
     let image = ImageView::new(IMG)?;

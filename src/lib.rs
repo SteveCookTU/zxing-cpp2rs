@@ -1,12 +1,12 @@
 #![feature(arbitrary_self_types)]
 #![allow(unused_imports)]
 
-use std::fmt::{Display, Formatter};
 use autocxx::prelude::*;
 use image::io::Reader;
+use image::ImageResult;
+use std::fmt::{Display, Formatter};
 use std::io::Cursor;
 use std::pin::Pin;
-use image::ImageResult;
 
 mod reader_options {
     use autocxx::prelude::*;
@@ -17,21 +17,32 @@ mod reader_options {
     }
     pub use ffi::*;
 }
+mod reader_options_ext {
+    use autocxx::prelude::*;
+    include_cpp! {
+        #include "ReaderOptionsExt.h"
+        name!(ffi3)
+        safety!(unsafe_references_wrapped)
+        generate!("ZXing::ReaderOptionsExt")
+        extern_cpp_type!("ZXing::ReaderOptions", crate::reader_options::ZXing::ReaderOptions)
+        extern_cpp_type!("ZXing::BarcodeFormat", crate::base::ZXing::BarcodeFormat)
+    }
+    pub use ffi3::*;
+}
 
 mod base {
     use autocxx::prelude::*;
     include_cpp! {
         #include "ImageView.h"
-        #include "Flags.h"
         #include "ReadBarcode.h"
         #include "Result.h"
+        #include "Flags.h"
         name!(ffi2)
         safety!(unsafe_ffi)
         generate!("ZXing::ReadBarcode")
-        generate!("ZXing::Flags")
         generate!("ZXing::ImageView")
         generate!("ZXing::Result")
-        instantiable!("ZXing::Results")
+        generate!("ZXing::Results")
         extern_cpp_type!("ZXing::ReaderOptions", crate::reader_options::ZXing::ReaderOptions)
         extern_cpp_type!("ZXing::TextMode", crate::reader_options::ZXing::TextMode)
     }
@@ -92,26 +103,26 @@ impl From<base::ZXing::BarcodeFormat> for BarcodeFormat {
             BF::None => BarcodeFormat::None,
             BF::Aztec => BarcodeFormat::Aztec,
             BF::Codabar => BarcodeFormat::Codabar,
-            BF::Code39 => {BarcodeFormat::Code39}
-            BF::Code93 => {BarcodeFormat::Code93}
-            BF::Code128 => {BarcodeFormat::Code128}
-            BF::DataBar => {BarcodeFormat::DataBar}
-            BF::DataBarExpanded => {BarcodeFormat::DataBarExpanded}
-            BF::DataMatrix => {BarcodeFormat::DataMatrix}
-            BF::EAN8 => {BarcodeFormat::EAN8}
-            BF::EAN13 => {BarcodeFormat::EAN13}
-            BF::ITF => {BarcodeFormat::ITF}
-            BF::MaxiCode => {BarcodeFormat::MaxiCode}
-            BF::PDF417 => {BarcodeFormat::PDF417}
-            BF::QRCode => {BarcodeFormat::QRCode}
-            BF::UPCA => {BarcodeFormat::UPCA}
-            BF::UPCE => {BarcodeFormat::UPCE}
-            BF::MicroQRCode => {BarcodeFormat::MicroQRCode}
-            BF::RMQRCode => {BarcodeFormat::RMQRCode}
-            BF::DXFilmEdge => {BarcodeFormat::DXFilmEdge}
-            BF::LinearCodes => {BarcodeFormat::LinearCodes}
-            BF::MatrixCodes => {BarcodeFormat::MatrixCodes}
-            BF::Any => {BarcodeFormat::Any}
+            BF::Code39 => BarcodeFormat::Code39,
+            BF::Code93 => BarcodeFormat::Code93,
+            BF::Code128 => BarcodeFormat::Code128,
+            BF::DataBar => BarcodeFormat::DataBar,
+            BF::DataBarExpanded => BarcodeFormat::DataBarExpanded,
+            BF::DataMatrix => BarcodeFormat::DataMatrix,
+            BF::EAN8 => BarcodeFormat::EAN8,
+            BF::EAN13 => BarcodeFormat::EAN13,
+            BF::ITF => BarcodeFormat::ITF,
+            BF::MaxiCode => BarcodeFormat::MaxiCode,
+            BF::PDF417 => BarcodeFormat::PDF417,
+            BF::QRCode => BarcodeFormat::QRCode,
+            BF::UPCA => BarcodeFormat::UPCA,
+            BF::UPCE => BarcodeFormat::UPCE,
+            BF::MicroQRCode => BarcodeFormat::MicroQRCode,
+            BF::RMQRCode => BarcodeFormat::RMQRCode,
+            BF::DXFilmEdge => BarcodeFormat::DXFilmEdge,
+            BF::LinearCodes => BarcodeFormat::LinearCodes,
+            BF::MatrixCodes => BarcodeFormat::MatrixCodes,
+            BF::Any => BarcodeFormat::Any,
         }
     }
 }
@@ -148,14 +159,15 @@ impl Display for BarcodeFormat {
 
 pub struct ImageView {
     _data: Vec<u8>,
-    image: UniquePtr<base::ZXing::ImageView>
+    image: UniquePtr<base::ZXing::ImageView>,
 }
 
 impl ImageView {
     pub fn new(data: &[u8]) -> ImageResult<Self> {
         let image = Reader::new(Cursor::new(data))
             .with_guessed_format()?
-            .decode()?.into_luma8();
+            .decode()?
+            .into_luma8();
 
         let width = image.width() as i32;
         let height = image.height() as i32;
@@ -163,22 +175,24 @@ impl ImageView {
         let data = image.into_vec();
 
         Ok(Self {
-            image: unsafe { base::ZXing::ImageView::new(
-                data.as_ptr(),
-                c_int(width),
-                c_int(height),
-                base::ZXing::ImageFormat::Lum,
-                c_int(0),
-                c_int(0),
-            ) }.within_unique_ptr(),
+            image: unsafe {
+                base::ZXing::ImageView::new(
+                    data.as_ptr(),
+                    c_int(width),
+                    c_int(height),
+                    base::ZXing::ImageFormat::Lum,
+                    c_int(0),
+                    c_int(0),
+                )
+            }
+            .within_unique_ptr(),
             _data: data,
         })
-
     }
 }
 
 pub struct BarcodeResult {
-    result: UniquePtr<base::ZXing::Result>
+    result: UniquePtr<base::ZXing::Result>,
 }
 
 impl BarcodeResult {
@@ -187,13 +201,18 @@ impl BarcodeResult {
     }
 
     pub fn text(&self) -> String {
-        self.result.text(reader_options::ZXing::TextMode::Plain.within_unique_ptr()).to_string()
+        self.result
+            .text(reader_options::ZXing::TextMode::Plain.within_unique_ptr())
+            .to_string()
     }
 }
 
 pub fn read_barcode(image: ImageView) -> BarcodeResult {
-    let options = reader_options::ZXing::ReaderOptions::new().within_unique_ptr();
+    let options = reader_options_ext::ZXing::ReaderOptionsExt::new().within_unique_ptr();
+    let mut options = CppUniquePtrPin::new(options);
+    options.as_cpp_mut_ref().addFormat(base::ZXing::BarcodeFormat::Codabar.within_unique_ptr());
     BarcodeResult {
-        result: base::ZXing::ReadBarcode(&image.image, &options).within_unique_ptr(),
+        result: base::ZXing::ReadBarcode(&image.image, unsafe { options.as_cpp_mut_ref().asOptions().as_mut() })
+            .within_unique_ptr(),
     }
 }
